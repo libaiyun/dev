@@ -1,0 +1,105 @@
+services:
+  redis:
+    image: "redis:7.2.3-alpine"
+    container_name: redis
+    mem_limit: 256m
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis/data:/data
+      - ./redis/redis.conf:/etc/redis.conf
+    command: redis-server /etc/redis.conf
+    restart: always
+    expose: # 暴露端口给同compose其他服务, 可通过redis:6379访问
+      - "6379"
+  es7:
+    image: "elasticsearch:7.6.1"
+    container_name: es7
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
+    mem_limit: 2g
+    restart: always
+    volumes:
+      - ./es7/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+      - ./es7/data:/usr/share/elasticsearch/data
+      - ./es7/ik:/usr/share/elasticsearch/plugins/ik
+  mysql5:
+    image: "mysql:5.7"
+    container_name: mysql5
+    mem_limit: 512m
+    ports:
+      - "3306:3306"
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+    volumes:
+      - ./mysql/my.cnf:/etc/mysql/conf.d/custom.cnf
+      - ./mysql/data:/var/lib/mysql
+  rabbitmq:
+    image: "rabbitmq:3.10-management-alpine"
+    container_name: rabbitmq
+    restart: always
+    hostname: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_VHOST: /
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    mem_limit: 512m
+    volumes:
+      - ./rabbitmq/data:/var/lib/rabbitmq
+  kafka:
+    image: "bitnami/kafka:3.6"
+    container_name: kafka
+    mem_limit: 1g
+    restart: always
+    ports:
+      - "9092:9092"
+      - "8080:8080"
+    environment:
+      - KAFKA_CFG_NODE_ID=0
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
+
+# kafka可视化工具
+#  kafka-map:
+#    image: "dushixiang/kafka-map:latest"
+#    container_name: kafka-map
+#    mem_limit: 800m
+#    environment:
+#      DEFAULT_USERNAME: admin
+#      DEFAULT_PASSWORD: admin
+#    restart: always
+#    depends_on:
+#      - kafka
+#    network_mode: "service:kafka"
+
+# python容器运行项目
+#  python36:
+#    build:
+#      context: ./python36
+#      dockerfile: Dockerfile
+#    container_name: python36
+#    depends_on:
+#      - redis
+#      - es7
+#      - mysql5
+#      - rabbitmq
+#      - kafka
+#    #    command: tail -f /dev/null
+#    ports:
+#      - "2222:22"
+#      - "9000:9000"
+
+
